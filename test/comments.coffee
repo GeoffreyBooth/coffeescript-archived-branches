@@ -273,7 +273,7 @@ test "#3132: Format indented block-comment nicely", ->
     1"""
 
   result = """
-  var fn;
+  let fn;
 
   fn = function() {
 
@@ -306,8 +306,8 @@ test "#3132: Format jsdoc-style block-comment nicely", ->
    * 
    * @type {Function}
    */
-  var fn;
-  
+  let fn;
+
   fn = function() {
     return 1;
   };
@@ -334,8 +334,8 @@ test "#3132: Format hand-made (raw) jsdoc-style block-comment nicely", ->
    * 
    * @type {Function}
    */
-  var fn;
-  
+  let fn;
+
   fn = function() {
     return 1;
   };
@@ -375,8 +375,8 @@ test "#3132: Place block-comments nicely", ->
    * 
    * @class
    */
-  var DummyClass;
-  
+  let DummyClass;
+
   DummyClass = (function() {
   
     /**

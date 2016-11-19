@@ -46,7 +46,7 @@ already exist.
 
       find: (name) ->
         return yes if @check name
-        @add name, 'var'
+        @add name, 'let'
         no
 
 Reserve a variable name as originating from a function parameter for this
@@ -91,7 +91,7 @@ compiler-generated variable. `_var`, `_var2`, and so on...
           temp = @temporary name, index, options.single
           break unless @check(temp) or temp in @root.referencedVars
           index++
-        @add temp, 'var', yes if options.reserve ? true
+        @add temp, 'let', yes if options.reserve ? true
         temp
 
 Ensure that an assignment is made at the top of this scope
@@ -109,7 +109,7 @@ Does this scope have any declared variables?
 Return the list of variables first declared in this scope.
 
       declaredVariables: ->
-        (v.name for v in @variables when v.type is 'var').sort()
+        (v.name for v in @variables when v.type is 'let').sort()
 
 Return the list of assignments that are supposed to be made at the top
 of this scope.

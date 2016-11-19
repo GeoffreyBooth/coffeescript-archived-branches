@@ -243,7 +243,7 @@ test "a variable can be assigned after an import", ->
     import { foo } from 'lib'
     bar = 5"""
   output = """
-    var bar;
+    let bar;
 
     import {
       foo
@@ -258,7 +258,7 @@ test "variables can be assigned before and after an import", ->
     import { bar } from 'lib'
     baz = 7"""
   output = """
-    var baz, foo;
+    let baz, foo;
 
     foo = 5;
 
@@ -356,28 +356,28 @@ test "export default object", ->
 test "export default assignment expression", ->
   input = "export default foo = 'bar'"
   output = """
-    var foo;
+    let foo;
 
     export default foo = 'bar';"""
   eq toJS(input), output
 
 test "export assignment expression", ->
   input = "export foo = 'bar'"
-  output = "export var foo = 'bar';"
+  output = "export let foo = 'bar';"
   eq toJS(input), output
 
 test "export multiline assignment expression", ->
   input = """
     export foo =
     'bar'"""
-  output = "export var foo = 'bar';"
+  output = "export let foo = 'bar';"
   eq toJS(input), output
 
 test "export multiline indented assignment expression", ->
   input = """
     export foo =
       'bar'"""
-  output = "export var foo = 'bar';"
+  output = "export let foo = 'bar';"
   eq toJS(input), output
 
 test "export default function", ->
@@ -400,7 +400,7 @@ test "export assignment function", ->
     export foo = (bar) ->
       console.log bar"""
   output = """
-    export var foo = function(bar) {
+    export let foo = function(bar) {
       return console.log(bar);
     };"""
   eq toJS(input), output
@@ -411,8 +411,8 @@ test "export assignment function which contains assignments in its body", ->
       baz = '!'
       console.log bar + baz"""
   output = """
-    export var foo = function(bar) {
-      var baz;
+    export let foo = function(bar) {
+      let baz;
       baz = '!';
       return console.log(bar + baz);
     };"""
@@ -424,7 +424,7 @@ test "export default predefined function", ->
       console.log bar
     export default foo"""
   output = """
-    var foo;
+    let foo;
 
     foo = function(bar) {
       return console.log(bar);
@@ -457,7 +457,7 @@ test "export class", ->
       baz: ->
         console.log 'hello, world!'"""
   output = toJS input
-  ok /^export (class foo|var foo = \(function)/.test toJS input
+  ok /^export (class foo|let foo = \(function)/.test toJS input
 
 test "export class that extends", ->
   input = """
@@ -465,8 +465,8 @@ test "export class that extends", ->
       baz: ->
         console.log 'hello, world!'"""
   output = toJS input
-  ok /export (class foo|var foo = \(function)/.test(output) and \
-    not /var foo(;|,)/.test output
+  ok /export (class foo|let foo = \(function)/.test(output) and \
+    not /let foo(;|,)/.test output
 
 test "export default class that extends", ->
   input = """
@@ -552,7 +552,7 @@ test "a variable named `from` can be assigned after an import", ->
     import { foo } from 'lib'
     from = 5"""
   output = """
-    var from;
+    let from;
 
     import {
       foo
@@ -568,7 +568,7 @@ test "`from` can be assigned after a multiline import", ->
     } from 'lib'
     from = 5"""
   output = """
-    var from;
+    let from;
 
     import {
       foo
@@ -640,13 +640,13 @@ test "CoffeeScript keywords can be used as imported names in import lists", ->
 test "`*` can be used in an expression on the same line as an export keyword", ->
   input = "export foo = (x) -> x * x"
   output = """
-    export var foo = function(x) {
+    export let foo = function(x) {
       return x * x;
     };"""
   eq toJS(input), output
   input = "export default foo = (x) -> x * x"
   output = """
-    var foo;
+    let foo;
 
     export default foo = function(x) {
       return x * x;
@@ -662,7 +662,7 @@ test "`*` and `from` can be used in an export default expression", ->
   output = """
     export default foo.extend({
       bar: function() {
-        var from;
+        let from;
         from = 5;
         return from = from * 3;
       }

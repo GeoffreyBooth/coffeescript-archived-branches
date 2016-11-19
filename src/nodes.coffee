@@ -367,7 +367,7 @@ exports.Block = class Block extends Base
       assigns = scope.hasAssignments
       if declars or assigns
         fragments.push @makeCode '\n' if i
-        fragments.push @makeCode "#{@tab}var "
+        fragments.push @makeCode "#{@tab}let "
         if declars
           fragments.push @makeCode scope.declaredVariables().join(', ')
         if assigns
@@ -909,7 +909,7 @@ exports.Range = class Range extends Base
     else
       vars    = "#{i} = #{@fromC}" + if @toC isnt @toVar then ", #{@toC}" else ''
       cond    = "#{@fromVar} <= #{@toVar}"
-      body    = "var #{vars}; #{cond} ? #{i} <#{@equals} #{@toVar} : #{i} >#{@equals} #{@toVar}; #{cond} ? #{i}++ : #{i}--"
+      body    = "let #{vars}; #{cond} ? #{i} <#{@equals} #{@toVar} : #{i} >#{@equals} #{@toVar}; #{cond} ? #{i}++ : #{i}--"
     post   = "{ #{result}.push(#{i}); }\n#{idt}return #{result};\n#{o.indent}"
     hasArgs = (node) -> node?.contains isLiteralArguments
     args   = ', arguments' if hasArgs(@from) or hasArgs(@to)
@@ -1251,7 +1251,7 @@ exports.ExportDeclaration = class ExportDeclaration extends ModuleDeclaration
         @clause.error 'anonymous classes cannot be exported'
 
       # When the ES2015 `class` keyword is supported, don’t add a `var` here
-      code.push @makeCode 'var '
+      code.push @makeCode 'let '
       @clause.moduleDeclaration = 'export'
 
     if @clause.body? and @clause.body instanceof Block
@@ -1382,7 +1382,7 @@ exports.Assign = class Assign extends Base
           @checkAssignability o, varBase
           o.scope.add varBase.value, @moduleDeclaration
         else if @param
-          o.scope.add varBase.value, 'var'
+          o.scope.add varBase.value, 'let'
         else
           @checkAssignability o, varBase
           o.scope.find varBase.value
@@ -1679,7 +1679,7 @@ exports.Code = class Code extends Base
             ifTrue = new Assign new Value(param.name), param.value, '='
             exprs.push new If condition, ifTrue
           # Add this parameter to the scope, since it wouldn’t have been added yet since it was skipped earlier.
-          o.scope.add param.name.value, 'var', yes if param.name?.value?
+          o.scope.add param.name.value, 'let', yes if param.name?.value?
 
     # If there were parameters after the splat or expansion parameter, those
     # parameters need to be assigned in the body of the function.
@@ -1994,7 +1994,7 @@ exports.Op = class Op extends Base
     # as the chained expression is wrapped.
     @first.front = @front unless isChain
     if @operator is 'delete' and o.scope.check(@first.unwrapAll().value)
-      @error 'delete operand may not be argument or var'
+      @error 'delete operand may not be argument or var/let/const'
     if @operator in ['--', '++']
       message = isUnassignable @first.unwrapAll().value
       @first.error message if message
@@ -2544,7 +2544,7 @@ UTILITIES =
   # to the superclass for `super()` calls, and copies of any static properties.
   extend: (o) -> "
     function(child, parent) {
-      for (var key in parent) {
+      for (let key in parent) {
         if (#{utility 'hasProp', o}.call(parent, key)) child[key] = parent[key];
       }
       function ctor() {
