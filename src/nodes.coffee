@@ -282,6 +282,12 @@ exports.Base = class Base
   wrapInParentheses: (fragments) ->
     [].concat @makeCode('('), fragments, @makeCode(')')
 
+  wrapInBraces: (fragments) ->
+    [].concat @makeCode('{ '), fragments, @makeCode(' }')
+
+  wrapInBrackets: (fragments) ->
+    [].concat @makeCode('[ '), fragments, @makeCode(' ]')
+
   # `fragmentsList` is an array of arrays of fragments. Each array in fragmentsList will be
   # concatonated together, with `joinStr` added in between each, to produce a final flat array
   # of fragments.
@@ -1636,12 +1642,18 @@ exports.ExportSpecifier = class ExportSpecifier extends ModuleSpecifier
 exports.Assign = class Assign extends Base
   constructor: (@variable, @value, @context, options = {}) ->
     super()
-    {@param, @subpattern, @operatorToken, @moduleDeclaration} = options
+    {@param, @subpattern, @operatorToken, @moduleDeclaration, @wrapVariableInBraces, @wrapVariableInBrackets} = options
 
   children: ['variable', 'value']
 
   isStatement: (o) ->
     o?.level is LEVEL_TOP and @context? and (@moduleDeclaration or "?" in @context)
+
+  isDestructured: ->
+    @wrapVariableInBraces or @wrapVariableInBrackets
+
+  isAssignable: ->
+    @isDestructured()
 
   checkAssignability: (o, varBase) ->
     if Object::hasOwnProperty.call(o.scope.positions, varBase.value) and
@@ -1688,6 +1700,8 @@ exports.Assign = class Assign extends Base
     val = @value.compileToFragments o, LEVEL_LIST
     @variable.front = true if isValue and @variable.base instanceof Obj
     compiledName = @variable.compileToFragments o, LEVEL_LIST
+    compiledName = @wrapInBraces compiledName   if @wrapVariableInBraces
+    compiledName = @wrapInBrackets compiledName if @wrapVariableInBrackets
 
     if @context is 'object'
       if @variable.shouldCache()
