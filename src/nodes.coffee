@@ -661,6 +661,7 @@ exports.Value = class Value extends Base
   isRange        : -> @bareLiteral(Range)
   shouldCache    : -> @hasProperties() or @base.shouldCache()
   isAssignable   : -> @hasProperties() or @base.isAssignable()
+  isDestructured : -> @base instanceof Obj or @base instanceof Arr
   isNumber       : -> @bareLiteral(NumberLiteral)
   isString       : -> @bareLiteral(StringLiteral)
   isRegex        : -> @bareLiteral(RegexLiteral)
@@ -1109,6 +1110,8 @@ exports.Obj = class Obj extends Base
     @objects = @properties = props or []
 
   children: ['properties']
+
+  isAssignable: YES
 
   compileNode: (o) ->
     props = @properties
@@ -1713,7 +1716,12 @@ exports.Assign = class Assign extends Base
       return compiledName.concat @makeCode(": "), val
 
     answer = compiledName.concat @makeCode(" #{ @context or '=' } "), val
-    if o.level <= LEVEL_LIST then answer else @wrapInParentheses answer
+    if o.level > LEVEL_LIST or @wrapVariableInBraces or @wrapVariableInBrackets
+      # Per https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Assignment_without_declaration,
+      # if we’re destructuring without declaring, the destructuring assignment must be wrapped in parentheses.
+      @wrapInParentheses answer
+    else
+      answer
 
   # Brief implementation of recursive pattern matching, when assigning array or
   # object literals to a value. Peeks at their properties to assign inner names.
@@ -2765,7 +2773,8 @@ exports.For = class For extends While
     @index.error 'cannot use index with for-from' if @from and @index
     source.ownTag.error "cannot use own with for-#{if @from then 'from' else 'in'}" if @own and not @object
     [@name, @index] = [@index, @name] if @object
-    @index.error 'index cannot be a pattern matching expression' if @index instanceof Value and not @index.isAssignable()
+    if @index instanceof Value and (@index.isDestructured() or not @index.isAssignable())
+      @index.error 'index cannot be a pattern matching expression'
     @range   = @source instanceof Value and @source.base instanceof Range and not @source.properties.length and not @from
     @pattern = @name instanceof Value
     @index.error 'indexes do not apply to range loops' if @range and @index
