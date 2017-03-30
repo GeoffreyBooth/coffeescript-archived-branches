@@ -1645,7 +1645,8 @@ exports.ExportSpecifier = class ExportSpecifier extends ModuleSpecifier
 exports.Assign = class Assign extends Base
   constructor: (@variable, @value, @context, options = {}) ->
     super()
-    {@param, @subpattern, @operatorToken, @moduleDeclaration, @wrapVariableInBraces, @wrapVariableInBrackets} = options
+    {@param, @subpattern, @operatorToken, @moduleDeclaration, \
+    @defaultValue, @wrapVariableInBraces, @wrapVariableInBrackets} = options
 
   children: ['variable', 'value']
 
@@ -1656,7 +1657,7 @@ exports.Assign = class Assign extends Base
     @wrapVariableInBraces or @wrapVariableInBrackets
 
   isAssignable: ->
-    @isDestructured()
+    @isDestructured() or @defaultValue isnt undefined
 
   checkAssignability: (o, varBase) ->
     if Object::hasOwnProperty.call(o.scope.positions, varBase.value) and
@@ -1703,6 +1704,9 @@ exports.Assign = class Assign extends Base
     val = @value.compileToFragments o, LEVEL_LIST
     @variable.front = true if isValue and @variable.base instanceof Obj
     compiledName = @variable.compileToFragments o, LEVEL_LIST
+    if @defaultValue isnt undefined
+      compiledName.push @makeCode ' = '
+      compiledName = compiledName.concat @defaultValue.compileToFragments o, LEVEL_LIST
     compiledName = @wrapInBraces compiledName   if @wrapVariableInBraces
     compiledName = @wrapInBrackets compiledName if @wrapVariableInBrackets
 
@@ -1716,9 +1720,10 @@ exports.Assign = class Assign extends Base
       return compiledName.concat @makeCode(": "), val
 
     answer = compiledName.concat @makeCode(" #{ @context or '=' } "), val
-    if o.level > LEVEL_LIST or @wrapVariableInBraces or @wrapVariableInBrackets
+    if o.level > LEVEL_LIST or @wrapVariableInBraces
       # Per https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Assignment_without_declaration,
-      # if we’re destructuring without declaring, the destructuring assignment must be wrapped in parentheses.
+      # when we’re destructuring objects (but not arrays) without declaring,
+      # the destructuring assignment must be wrapped in parentheses.
       @wrapInParentheses answer
     else
       answer
@@ -1757,6 +1762,13 @@ exports.Assign = class Assign extends Base
         if obj instanceof Assign
           defaultValue = obj.value
           obj = obj.variable
+        acc   = idx.unwrap() instanceof PropertyName
+        value = new Value value
+        value.properties.push new (if acc then Access else Index) idx
+        message = isUnassignable obj.unwrap().value
+        obj.error message if message
+        value = new Op '??', value, defaultValue if defaultValue
+        return new Assign(obj, value, null, param: @param).compileToFragments o, LEVEL_TOP
       else
         if obj instanceof Assign
           defaultValue = obj.value
@@ -1770,13 +1782,17 @@ exports.Assign = class Assign extends Base
         else
           # A regular array pattern-match.
           new NumberLiteral 0
-      acc   = idx.unwrap() instanceof PropertyName
-      value = new Value value
-      value.properties.push new (if acc then Access else Index) idx
-      message = isUnassignable obj.unwrap().value
-      obj.error message if message
-      value = new Op '?', value, defaultValue if defaultValue
-      return new Assign(obj, value, null, param: @param).compileToFragments o, LEVEL_TOP
+        acc   = idx.unwrap() instanceof PropertyName
+        value = new Value value
+        # value.properties.push new Index idx unless acc
+        message = isUnassignable obj.unwrap().value
+        obj.error message if message
+        assignOptions =
+          param: @param
+          wrapVariableInBraces: isObject
+          wrapVariableInBrackets: not isObject
+        assignOptions.defaultValue = defaultValue if defaultValue
+        return new Assign(obj, value, null, assignOptions).compileToFragments o, LEVEL_TOP
 
     vvar     = value.compileToFragments o, LEVEL_LIST
     vvarText = fragmentsToText vvar
