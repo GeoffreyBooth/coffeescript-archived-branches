@@ -1755,20 +1755,14 @@ exports.Assign = class Assign extends Base
     if top and olen is 1 and obj not instanceof Splat
       # Pick the property straight off the value when there’s just one to pick
       # (no need to cache the value into a variable).
-      defaultValue = null
+      defaultValue = undefined
       if obj instanceof Assign and obj.context is 'object'
         # A regular object pattern-match.
+        regularObjectPatternMatch = yes
         {variable: {base: idx}, value: obj} = obj
         if obj instanceof Assign
           defaultValue = obj.value
           obj = obj.variable
-        acc   = idx.unwrap() instanceof PropertyName
-        value = new Value value
-        value.properties.push new (if acc then Access else Index) idx
-        message = isUnassignable obj.unwrap().value
-        obj.error message if message
-        value = new Op '??', value, defaultValue if defaultValue
-        return new Assign(obj, value, null, param: @param).compileToFragments o, LEVEL_TOP
       else
         if obj instanceof Assign
           defaultValue = obj.value
@@ -1782,16 +1776,24 @@ exports.Assign = class Assign extends Base
         else
           # A regular array pattern-match.
           new NumberLiteral 0
-        acc   = idx.unwrap() instanceof PropertyName
-        value = new Value value
-        # value.properties.push new Index idx unless acc
-        message = isUnassignable obj.unwrap().value
-        obj.error message if message
+
+      acc   = idx.unwrap() instanceof PropertyName
+      value = new Value value
+      message = isUnassignable obj.unwrap().value
+      obj.error message if message
+
+      if regularObjectPatternMatch or obj.this
+        # ES doesn’t support `this` in destructuring, so we handle that case
+        # the legacy way.
+        value.properties.push new (if acc then Access else Index) idx
+        value = new Op '??', value, defaultValue if defaultValue isnt undefined
+        return new Assign(obj, value, null, param: @param).compileToFragments o, LEVEL_TOP
+      else
         assignOptions =
           param: @param
           wrapVariableInBraces: isObject
           wrapVariableInBrackets: not isObject
-        assignOptions.defaultValue = defaultValue if defaultValue
+        assignOptions.defaultValue = defaultValue if defaultValue isnt undefined
         return new Assign(obj, value, null, assignOptions).compileToFragments o, LEVEL_TOP
 
     vvar     = value.compileToFragments o, LEVEL_LIST
