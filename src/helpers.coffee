@@ -2,17 +2,6 @@
 # the **Lexer**, **Rewriter**, and the **Nodes**. Merge objects, flatten
 # arrays, count characters, that sort of thing.
 
-marked = require 'marked'
-# marked.setOptions
-#   renderer: new marked.Renderer()
-#   gfm: true
-#   tables: true
-#   breaks: false
-#   pedantic: false
-#   sanitize: true
-#   smartLists: true
-#   smartypants: false
-
 # Peek at the beginning of a given string to see if it matches a sequence.
 exports.starts = (string, literal, start) ->
   literal is string.substr start, literal.length
@@ -82,21 +71,13 @@ exports.some = Array::some ? (fn) ->
 # out all non-code blocks, producing a string of CoffeeScript code that can
 # be compiled “normally.”
 exports.invertLiterate = (code) ->
-  # Create a placeholder for tabs, that isn’t used anywhere in `code`, and then
-  # re-insert the tabs after code extraction.
-  generateRandomToken = ->
-    "#{Math.random() * Date.now()}"
-  while token is undefined or code.indexOf(token) isnt -1
-    token = generateRandomToken()
-
-  code = code.replace "\t", token
-  # Parse as markdown, discard everything except code blocks.
-  out = ""
-  for item in marked.lexer code, {}
-    out += "#{item.text}\n" if item.type is 'code'
-  # Put the tabs back in.
-  out.replace token, "\t"
-  out
+  illiterate = require 'illiterate'
+  # Convert line-leading tabs to spaces so that Illiterate doesn’t get confused.
+  code = code.replace /^(\t)+/gm, (match) ->
+    spaces = ''
+    spaces += '  ' for tab in [0..match.length]
+    spaces
+  illiterate(code).default
 
 # Merge two jison-style location data objects together.
 # If `last` is not provided, this will simply return `first`.
